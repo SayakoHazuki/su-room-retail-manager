@@ -11,10 +11,10 @@ interface TransactionRecord {
 }
 
 interface Item {
-  id: text;
-  title: text;
+  id: string;
+  title: string;
   price: Int2;
-  keywords: text;
+  keywords: string;
 }
 
 interface TransactionItem {

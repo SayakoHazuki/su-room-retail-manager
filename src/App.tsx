@@ -26,6 +26,11 @@ interface TabPanelProps {
   value: number;
 }
 
+//@ts-ignore
+window.supabase = supabase
+
+let getItemName = (id: string) => "Loading"
+
 function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props;
 
@@ -58,6 +63,7 @@ function App() {
   const [items, setItems] = useState<Item[]>([]);
   const [value, setValue] = useState(0);
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+    getRecords();
     setValue(newValue);
   };
 
@@ -83,6 +89,11 @@ function App() {
     }
   }
 
+  getItemName = (id: string) => {
+    const item = items.find((item) => item.id === id);
+    return item ? item.title : "Unknown product";
+  }
+
   return (
     <div>
       <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
@@ -100,10 +111,10 @@ function App() {
         <DataTable records={records} />
       </TabPanel>
       <TabPanel value={value} index={1}>
-        <TransactionCreator itemsDict={items} />
+        <TransactionCreator itemsDict={items} supabaseClient={supabase}/>
       </TabPanel>
       <TabPanel value={value} index={2}>
-        Item Three
+        To be completed
       </TabPanel>
     </div>
   );
@@ -133,6 +144,7 @@ const columns: GridColDef[] = [
     field: "item",
     headerName: "Item",
     width: 350,
+    valueGetter: ({row}) => getItemName(row.item),
   },
   {
     field: "quantity",

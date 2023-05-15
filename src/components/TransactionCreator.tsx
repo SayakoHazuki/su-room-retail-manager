@@ -2,25 +2,26 @@ import * as React from "react";
 import "./STransactionCreator.css";
 import { Button, TextField } from "@mui/material";
 import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { DataGrid, GridColDef, useGridApiRef } from "@mui/x-data-grid";
 import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import FormControl from "@mui/material/FormControl";
-import FormLabel from "@mui/material/FormLabel";
 
-import { ChangeEvent, FormEvent, useRef, useState } from "react";
-import { GridApiCommunity } from "@mui/x-data-grid/internals";
+import { ChangeEvent, FormEvent, useRef, useState, MouseEvent } from "react";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 export interface ITransactionCreatorProps {}
 
 export default function TransactionCreator({
   itemsDict,
+  supabaseClient,
 }: {
   itemsDict: Item[];
+  supabaseClient: SupabaseClient;
 }) {
   const [items, setItems] = useState<TransactionItem[]>([]);
-  let idCounter = 0;
 
   const productIdInputRef = useRef<HTMLInputElement>();
   const [productIdInput, setProductIdInput] = useState<string>("");
@@ -29,14 +30,17 @@ export default function TransactionCreator({
 
   const [quantity, setQuantity] = useState<number>();
 
+  const [username, setUsername] = useState<string>("");
+  const [passcode, setPasscode] = useState<string>("");
+
   function addItem(productId: string, quantity: number) {
     console.log("iDict", itemsDict);
     const item = itemsDict.find((item) => item.id === productId);
     console.log("item", item);
     if (!item) return;
-    idCounter += 1;
+    const nextId = items.length + 1;
     const transItem = {
-      id: idCounter,
+      id: nextId,
       item,
       quantity,
       price: item.price * quantity,
@@ -55,15 +59,67 @@ export default function TransactionCreator({
     setProductIdInput("");
   }
 
-  function onQuantityChange(e: ChangeEvent<HTMLInputElement>) {
-    setQuantity(Number(e.target.value)  );
+  function shortcutSubmit(e: MouseEvent<HTMLButtonElement>, id: string) {
+    e.preventDefault();
+
+    if (productIdInputRef.current) {
+      productIdInputRef.current.focus();
+      productIdInputRef.current.value = id;
+    }
+
+    addItem(id, quantity ?? 1);
+    setTimeout(() => {
+      if (productIdInputRef.current) {
+        productIdInputRef.current.value = "";
+      }
+    }, 100);
+    setProductIdInput("");
   }
+
+  async function submitRecord(e: MouseEvent<HTMLButtonElement>) {
+    if (items.length === 0) return;
+
+    const records = items.map((item) => {
+      return {
+        date: new Date()
+          .toLocaleDateString()
+          .split("/")
+          .map((s) => s.padStart(2, "0"))
+          .join("/"),
+        staff: username,
+        item: item.item.id,
+        quantity: item.quantity,
+        price: item.price,
+      };
+    });
+
+    let { data, error } = await supabaseClient.rpc("insert_records", {
+      pw: passcode,
+      records,
+      staff: username,
+    });
+
+    if (error) console.error(error);
+    else console.log(data);
+  }
+
+  function onQuantityChange(e: ChangeEvent<HTMLInputElement>) {
+    setQuantity(Number(e.target.value));
+  }
+
+  const shortcutItems = [
+    { title: "暖包$3", id: "HWM3" },
+    { title: "暖包$5", id: "HWM5" },
+    { title: "間尺$5", id: "PRLR" },
+    { title: "File $2", id: "SFF4" },
+    { title: "單行$3", id: "SUFS" },
+  ];
 
   return (
     <div>
       <Stack direction="column" spacing={2}>
-        <Stack direction="row" spacing={2}>
-          <form className="transaction-input-form" onSubmit={handleSubmit}>
+        <form className="transaction-input-form" onSubmit={handleSubmit}>
+          <Stack direction="row" spacing={2}>
             <TextField
               inputRef={productIdInputRef}
               id="outlined-basic"
@@ -73,16 +129,23 @@ export default function TransactionCreator({
                 setProductIdInput(e.target.value)
               }
             />
-            <Button variant="contained">暖包$3</Button>
-            <Button variant="contained">暖包$5</Button>
-            <Button variant="contained">間尺$5</Button>
-            <Button variant="contained">File $2</Button>
-            <Button variant="contained">單行$3</Button>{" "}
+            {shortcutItems.map((item) => (
+              <Button
+                key={item.id}
+                variant="contained"
+                value={item.id}
+                onClick={(e: MouseEvent<HTMLButtonElement>) =>
+                  shortcutSubmit(e, item.id)
+                }
+              >
+                {item.title}
+              </Button>
+            ))}
             <FormControl>
               <RadioGroup
                 row
                 name="position"
-                defaultValue="top"
+                defaultValue="1"
                 onChange={onQuantityChange}
               >
                 <FormControlLabel
@@ -117,9 +180,9 @@ export default function TransactionCreator({
                 />
               </RadioGroup>
             </FormControl>
-          </form>
-        </Stack>
-        <div style={{ height: "100%", width: "100%" }}>
+          </Stack>
+        </form>
+        <div style={{ height: "80%", width: "100%" }}>
           <DataGrid
             apiRef={dataGridRef}
             rows={items}
@@ -134,10 +197,40 @@ export default function TransactionCreator({
                 },
               },
             }}
-            pageSizeOptions={[5, 10, 15, 20]}
+            pageSizeOptions={[5, 8, 10, 15, 20]}
             checkboxSelection
           />
         </div>
+        <Stack direction="row" spacing={2}>
+          <Typography variant="h4" sx={{ flex: 1 }}>
+            Total: $
+            {items.length > 0
+              ? items.map((i) => i.price).reduce((a, b) => a + b)
+              : 0}
+          </Typography>
+          <TextField
+            id="outlined-basic"
+            label="Staff"
+            variant="outlined"
+            autoComplete="username"
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setUsername(e.target.value)
+            }
+          />
+          <TextField
+            id="outlined-basic"
+            label="Passcode"
+            variant="outlined"
+            type="password"
+            autoComplete="current-password"
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setPasscode(e.target.value)
+            }
+          />
+          <Button onClick={submitRecord} variant="contained">
+            Submit record
+          </Button>
+        </Stack>
       </Stack>
     </div>
   );
