@@ -3,14 +3,27 @@ import "./STransactionCreator.css";
 import { Button, TextField } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { DataGrid, GridColDef, useGridApiRef } from "@mui/x-data-grid";
+import {
+  DataGrid,
+  GridCallbackDetails,
+  GridColDef,
+  GridRowSelectionModel,
+  useGridApiRef,
+} from "@mui/x-data-grid";
 import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import FormControl from "@mui/material/FormControl";
+import DatagridFooter from "./base/DatagridFooter";
 
 import { ChangeEvent, FormEvent, useRef, useState, MouseEvent } from "react";
 import { SupabaseClient } from "@supabase/supabase-js";
+
+function saveInput(records: TransactionItem[]) {
+  // localStorage.setItem("records", JSON.stringify(records));
+  // localStorage.setItem("items", JSON.stringify(items));
+  localStorage.setItem("records", JSON.stringify(records));
+}
 
 export interface ITransactionCreatorProps {}
 
@@ -22,6 +35,38 @@ export default function TransactionCreator({
   supabaseClient: SupabaseClient;
 }) {
   const [items, setItems] = useState<TransactionItem[]>([]);
+
+  if (localStorage.getItem("records") !== null && items.length === 0) {
+    const records = JSON.parse(localStorage.getItem("records") ?? "");
+    setItems(records);
+  }
+
+  const [selectionCount, setSelectionCount] = useState(0);
+  const [selectionItemsSum, setSelectionItemsSum] = useState(0);
+  const [selectionPriceSum, setSelectionPriceSum] = useState(0);
+
+  const onRowSelectionModelChange = (
+    rowSelection: GridRowSelectionModel,
+    details: GridCallbackDetails
+  ) => {
+    setSelectionCount(rowSelection.length);
+    setSelectionItemsSum(
+      rowSelection
+        .map((id) => {
+          const record = items.find((item: TransactionItem) => item.id === id);
+          return record ? record.quantity ?? 0 : 0;
+        })
+        .reduce((sum, qty) => sum + qty, 0)
+    );
+    setSelectionPriceSum(
+      rowSelection
+        .map((id) => {
+          const record = items.find((item: TransactionItem) => item.id === id);
+          return record ? record.price ?? 0 : 0;
+        })
+        .reduce((sum, price) => sum + price, 0)
+    );
+  };
 
   const productIdInputRef = useRef<HTMLInputElement>();
   const [productIdInput, setProductIdInput] = useState<string>("");
@@ -48,6 +93,7 @@ export default function TransactionCreator({
     setItems([...items, transItem]);
     console.log(items);
     dataGridRef.current.updateRows([transItem]);
+    saveInput([...items, transItem]);
   }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -114,6 +160,27 @@ export default function TransactionCreator({
     { title: "File $2", id: "SFF4" },
     { title: "單行$3", id: "SUFS" },
   ];
+
+  const deleteSelected = () => {
+    console.log("datagridref", dataGridRef.current);
+    console.log("GridRowId", dataGridRef.current.getSelectedRows());
+    console.log("items", items);
+    const newItems = items.filter(
+      (item: TransactionItem) =>
+        !Array.from(dataGridRef.current.getSelectedRows().keys())?.includes(
+          item.id
+        )
+    );
+    console.log("newItems", newItems);
+    saveInput(newItems);
+    // reload
+    document.location.reload();
+  };
+
+  const clearAll = () => {
+    localStorage.removeItem("records");
+    document.location.reload();
+  };
 
   return (
     <div>
@@ -199,6 +266,22 @@ export default function TransactionCreator({
             }}
             pageSizeOptions={[5, 8, 10, 15, 20]}
             checkboxSelection
+            onRowSelectionModelChange={onRowSelectionModelChange}
+            slots={{
+              footer: DatagridFooter,
+            }}
+            slotProps={{
+              footer: {
+                selectionCount: selectionCount,
+                selectionItemsSum: selectionItemsSum,
+                selectionPriceSum: selectionPriceSum,
+                optionsShown: true,
+                buttonCallbacks: {
+                  deleteSelected,
+                  clearAll,
+                },
+              },
+            }}
           />
         </div>
         <Stack direction="row" spacing={2}>
