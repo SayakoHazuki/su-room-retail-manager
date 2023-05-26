@@ -1,5 +1,5 @@
 import { Button, Divider, Stack } from "@mui/material";
-import { GridSlotsComponentsProps } from "@mui/x-data-grid";
+import { GridFooter, GridFooterContainer, GridSlotsComponentsProps } from "@mui/x-data-grid";
 
 declare module "@mui/x-data-grid" {
   interface FooterPropsOverrides {
@@ -24,31 +24,41 @@ export default function DatagridFooter(
   props: NonNullable<GridSlotsComponentsProps["footer"]> & IDatagridFooterProps
 ) {
   return (
-    <Stack
-      sx={{ marginLeft: 2 }}
-      direction="row"
-      spacing={2}
-      alignItems="center"
-      divider={<Divider orientation="vertical" flexItem />}
-    >
-      <div>{props.selectionCount} selected</div>
-      <div>
-        {props.selectionItemsSum} items,{" "}
-        {formatDollars(props.selectionPriceSum ?? 0)}
-      </div>
-      {props.optionsShown && (
-        <Button
-          sx={{ color: "red" }}
-          onClick={props.buttonCallbacks?.deleteSelected}
-        >
-          Delete selected
-        </Button>
-      )}
-      {props.optionsShown && (
-        <Button sx={{ color: "red" }} onClick={props.buttonCallbacks?.clearAll}>
-          Clear all
-        </Button>
-      )}
-    </Stack>
+    <GridFooterContainer>
+      <Stack
+        sx={{ marginLeft: 2 }}
+        direction="row"
+        spacing={2}
+        alignItems="center"
+        divider={<Divider orientation="vertical" flexItem />}
+      >
+        <div>{props.selectionCount} selected</div>
+        <div>
+          {props.selectionItemsSum} items,{" "}
+          {formatDollars(props.selectionPriceSum ?? 0)}
+        </div>
+        {props.optionsShown && (
+          <Button
+            sx={{ color: "red" }}
+            onClick={props.buttonCallbacks?.deleteSelected}
+          >
+            Delete selected
+          </Button>
+        )}
+        {props.optionsShown && (
+          <Button
+            sx={{ color: "red" }}
+            onClick={props.buttonCallbacks?.clearAll}
+          >
+            Clear all
+          </Button>
+        )}
+      </Stack>
+      <GridFooter
+        sx={{
+          border: "none", // To delete double border.
+        }}
+      />
+    </GridFooterContainer>
   );
 }

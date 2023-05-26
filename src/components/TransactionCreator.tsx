@@ -36,7 +36,12 @@ export default function TransactionCreator({
 }) {
   const [items, setItems] = useState<TransactionItem[]>([]);
 
-  if (localStorage.getItem("records") !== null && items.length === 0) {
+  let loaded_items: TransactionItem[] = [];
+  try {
+    loaded_items = JSON.parse(localStorage.getItem("items") ?? "[]");
+  } catch {}
+
+  if (loaded_items.length && items.length === 0) {
     const records = JSON.parse(localStorage.getItem("records") ?? "");
     setItems(records);
   }
@@ -80,9 +85,13 @@ export default function TransactionCreator({
 
   function addItem(productId: string, quantity: number) {
     console.log("iDict", itemsDict);
-    const item = itemsDict.find((item) => item.id === productId);
-    console.log("item", item);
-    if (!item) return;
+    let item = itemsDict.find((item) => item.id === productId) ?? {
+      id: productId,
+      title: `Unknown product <${productId}>`,
+      price: 0,
+      keywords: ""
+    };
+    console.log("item", item); 
     const nextId = items.length + 1;
     const transItem = {
       id: nextId,

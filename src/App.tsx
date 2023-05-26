@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import {
-  Box,
-  Tab,
-  Tabs,
-  Typography,
-} from "@mui/material";
+import { Box, Tab, Tabs, Typography } from "@mui/material";
 import TransactionCreator from "./components/TransactionCreator";
 
 import "./App.css";
@@ -51,14 +46,59 @@ function a11yProps(index: number) {
   };
 }
 
+const tabsMap = [
+  {
+    value: 0,
+    label: "history",
+  },
+  {
+    value: 1,
+    label: "create"
+  }
+
+]
+
+function getTabValue(tab: string | null) {
+  if (!tab) return 0;
+  const tabValue = tabsMap.find((t) => t.label === tab);
+  if (!tabValue) return 0;
+  return tabValue.value;
+}
+
+function getTabLabel(value: number) {
+  const tabValue = tabsMap.find((t) => t.value === value);
+  if (!tabValue) return "";
+  return tabValue.label;
+}
+
+
 function App() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const page = urlParams.get("page");
+  
   const [records, setRecords] = useState<TransactionRecord[]>([]);
   const [items, setItems] = useState<Item[]>([]);
-  const [value, setValue] = useState(0);
+  const [value, setValue] = useState(getTabValue(page ?? null));
+
+  function goTo (tab: number) {
+    console.log("going to", tab)
+    // write params
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set("page", getTabLabel(tab));
+    window.history.replaceState(
+      null,
+      "",
+      window.location.pathname + "?" + urlParams.toString()
+    );
+
+    setValue(tab);
+    console.log("went to", value)
+  }
+
 
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     getRecords();
-    setValue(newValue);
+    goTo(newValue);
   };
 
   useEffect(() => {
@@ -85,7 +125,7 @@ function App() {
 
   const getItemName = (id: string) => {
     const item = items.find((item) => item.id === id);
-    return item ? item.title : "Unknown product";
+    return item ? item.title : `Unknown product <${id}>`;
   };
 
   return (
@@ -104,13 +144,10 @@ function App() {
         </Tabs>
       </Box>
       <TabPanel value={value} index={0}>
-        <TransactionHistory
-          records={records}
-          itemNameGetter={getItemName}
-        />
+        <TransactionHistory records={records} itemNameGetter={getItemName} />
       </TabPanel>
       <TabPanel value={value} index={1}>
-        <TransactionCreator itemsDict={items} supabaseClient={supabase}/>
+        <TransactionCreator itemsDict={items} supabaseClient={supabase} />
       </TabPanel>
       <TabPanel value={value} index={2}>
         To be completed
